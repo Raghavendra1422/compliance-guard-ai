@@ -1,0 +1,73 @@
+{
+  "summary": {
+    "total": 5,
+    "passed": 4,
+    "failed": 1,
+    "pass_rate": 80.0
+  },
+  "results": [
+    {
+      "id": "E2E-001",
+      "description": "High LTV violation \u2014 45 lakh loan at 90% LTV",
+      "expected_compliant": false,
+      "actual_compliant": false,
+      "decision_correct": true,
+      "violations_caught": [
+        "LTV"
+      ],
+      "violations_missed": [],
+      "risk_score": 80,
+      "passed": true
+    },
+    {
+      "id": "E2E-002",
+      "description": "Clean loan \u2014 all within RBI limits",
+      "expected_compliant": true,
+      "actual_compliant": true,
+      "decision_correct": true,
+      "violations_caught": [],
+      "violations_missed": [],
+      "risk_score": 50,
+      "passed": true
+    },
+    {
+      "id": "E2E-003",
+      "description": "Tenure violation \u2014 25 years exceeds 20 year limit",
+      "expected_compliant": false,
+      "actual_compliant": false,
+      "decision_correct": true,
+      "violations_caught": [],
+      "violations_missed": [
+        "tenure"
+      ],
+      "risk_score": 80,
+      "passed": false
+    },
+    {
+      "id": "E2E-004",
+      "description": "Small loan high LTV \u2014 20 lakh at 95% LTV",
+      "expected_compliant": false,
+      "actual_compliant": false,
+      "decision_correct": true,
+      "violations_caught": [
+        "LTV"
+      ],
+      "violations_missed": [],
+      "risk_score": 90,
+      "passed": true
+    },
+    {
+      "id": "E2E-005",
+      "description": "Large loan \u2014 80 lakh at 76% LTV \u2014 barely over 75% limit",
+      "expected_compliant": false,
+      "actual_compliant": false,
+      "decision_correct": true,
+      "violations_caught": [
+        "LTV"
+      ],
+      "violations_missed": [],
+      "risk_score": 70,
+      "passed": true
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import pdfplumber
 import os
 import uuid
+import datetime
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
@@ -24,39 +25,80 @@ vectorstore = Chroma(
     persist_directory=CHROMA_PATH
 )
 
-# ── Text splitter ──────────────────────────────────────────────
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=512,
-    chunk_overlap=50,
+    chunk_size=1200,
+    chunk_overlap=150,
     length_function=len,
-    separators=["\n\n", "\n", ".", " ", ""]
+    separators=[
+        "\n\n[PAGE",     # ← split at page boundaries FIRST
+        "\n\n",          # paragraph breaks
+        "\n",            # line breaks
+        ". ",            # sentences
+        " ",             # words
+        ""
+    ]
 )
 
 
+# ── PDF Extraction ─────────────────────────────────────────────
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """Extract all text from a PDF file."""
+    """
+    Smart PDF extraction that handles RBI document structure.
+    Each page is clearly marked and kept intact for better chunking.
+    """
     full_text = ""
+
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text:
-                    full_text += f"\n[PAGE {page_num + 1}]\n{text}"
+
+                raw_text = page.extract_text(
+                    x_tolerance=3,
+                    y_tolerance=3,
+                    layout=True,
+                    x_density=7.25,
+                    y_density=13
+                )
+
+                if not raw_text:
+                    continue
+
+                lines = raw_text.split("\n")
+                cleaned_lines = []
+
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.isdigit():
+                        continue
+                    if all(c in '-._=*' for c in line):
+                        continue
+                    if len(line) < 3:
+                        continue
+                    cleaned_lines.append(line)
+
+                if cleaned_lines:
+                    # ── Keep each page clearly separated ──
+                    page_content = "\n".join(cleaned_lines)
+                    full_text += f"\n\n[PAGE {page_num + 1}]\n{page_content}\n"
+
     except Exception as e:
         raise ValueError(f"Could not read PDF {pdf_path}: {str(e)}")
+
     return full_text.strip()
 
 
+# ── Version Control ────────────────────────────────────────────
 def delete_existing_chunks(circular_id: str) -> int:
     """
     Delete ALL chunks belonging to a circular_id from ChromaDB.
-    This is the core of version control — wipe old before adding new.
+    Core of version control — wipe old before adding new.
     Returns number of chunks deleted.
     """
     try:
         collection = vectorstore._collection
 
-        # Find all chunk IDs that belong to this circular_id
         results = collection.get(
             where={"circular_id": circular_id},
             include=["metadatas"]
@@ -67,7 +109,6 @@ def delete_existing_chunks(circular_id: str) -> int:
             return 0
 
         count = len(results["ids"])
-        # Delete them all
         collection.delete(ids=results["ids"])
         print(f"[Ingestor] Deleted {count} old chunks for {circular_id}")
         return count
@@ -92,7 +133,6 @@ def check_circular_exists(circular_id: str) -> dict:
         if not results["ids"]:
             return {"exists": False, "chunk_count": 0, "category": None}
 
-        # Get metadata from first chunk
         meta = results["metadatas"][0] if results["metadatas"] else {}
         return {
             "exists": True,
@@ -104,46 +144,39 @@ def check_circular_exists(circular_id: str) -> dict:
         return {"exists": False, "chunk_count": 0, "category": None}
 
 
+# ── Main Ingestion ─────────────────────────────────────────────
 def ingest_pdf(
     pdf_path: str,
     circular_id: str,
     category: str = "general",
-    replace: bool = True          # ← NEW: replace by default
+    replace: bool = True
 ) -> dict:
     """
     Full pipeline: PDF → text → chunks → embeddings → ChromaDB.
-    If replace=True (default), deletes old chunks for this circular_id first.
+    If replace=True (default), deletes old chunks first.
     """
 
-    # Step 0: Check if this circular_id already exists
     existing = check_circular_exists(circular_id)
     deleted_count = 0
 
     if existing["exists"] and replace:
         print(f"[Ingestor] Found existing version of {circular_id} "
-              f"({existing['chunk_count']} chunks) — replacing with new version...")
+              f"({existing['chunk_count']} chunks) — replacing...")
         deleted_count = delete_existing_chunks(circular_id)
-
     elif existing["exists"] and not replace:
         print(f"[Ingestor] Appending to existing {circular_id}...")
 
-    # Step 1: Extract text from PDF
     print(f"[Ingestor] Reading PDF: {pdf_path}")
     raw_text = extract_text_from_pdf(pdf_path)
 
     if not raw_text:
-        raise ValueError(
-            f"No text extracted from PDF. Is it a scanned/image PDF?"
-        )
+        raise ValueError("No text extracted from PDF. Is it a scanned/image PDF?")
 
-    # Step 2: Split into chunks
     print(f"[Ingestor] Splitting text into chunks...")
     chunks = text_splitter.split_text(raw_text)
     print(f"[Ingestor] Created {len(chunks)} chunks")
 
-    # Step 3: Build metadata for each chunk
     filename = os.path.basename(pdf_path)
-    import datetime
     ingested_at = datetime.datetime.now().isoformat()
 
     metadatas = []
@@ -161,14 +194,12 @@ def ingest_pdf(
             "chunk_index": i,
             "page_number": page_num,
             "chunk_id": str(uuid.uuid4()),
-            "ingested_at": ingested_at,     # ← track when ingested
-            "version": ingested_at[:10],    # ← date as version (2024-01-15)
+            "ingested_at": ingested_at,
+            "version": ingested_at[:10],
         })
 
-    # Step 4: Store in ChromaDB
     print(f"[Ingestor] Embedding and storing in ChromaDB...")
     vectorstore.add_texts(texts=chunks, metadatas=metadatas)
-
     print(f"[Ingestor] Done! Ingested {len(chunks)} chunks from {filename}")
 
     return {
@@ -183,6 +214,7 @@ def ingest_pdf(
     }
 
 
+# ── Listing ────────────────────────────────────────────────────
 def list_ingested_documents() -> list:
     """Return all unique documents stored in ChromaDB with version info."""
     try:
@@ -203,7 +235,6 @@ def list_ingested_documents() -> list:
                     "ingested_at": meta.get("ingested_at", "unknown"),
                 })
 
-        # Sort by ingested_at descending (latest first)
         documents.sort(key=lambda x: x.get("ingested_at", ""), reverse=True)
         return documents
 
@@ -211,24 +242,31 @@ def list_ingested_documents() -> list:
         return []
 
 
+# ── Search ─────────────────────────────────────────────────────
 def search_regulations(
     query: str,
     n_results: int = 5,
     category: str = None
 ) -> list:
     """Search ChromaDB for relevant regulation chunks."""
-    search_kwargs = {"k": n_results}
+
+    search_kwargs = {"k": max(n_results * 2, 10)}
 
     if category:
         search_kwargs["filter"] = {"category": category}
 
-    results = vectorstore.similarity_search_with_score(query, **search_kwargs)
+    results = vectorstore.similarity_search_with_score(
+        query,
+        **search_kwargs
+    )
 
     formatted = []
     for doc, score in results:
         formatted.append({
             "content": doc.page_content,
             "metadata": doc.metadata,
-            "relevance_score": round(1 - score, 4)
+            "relevance_score": float(score)
         })
-    return formatted
+
+    formatted.sort(key=lambda x: x["relevance_score"], reverse=True)
+    return formatted[:n_results]

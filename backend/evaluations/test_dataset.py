@@ -1,0 +1,51 @@
+test_cases = [
+    {
+        "id": "TC000",
+        "category": "home_loan",
+        "input": "As per RBI paragraph 58, what is the LTV limit for housing loans up to 30 lakh?",
+        "expected_output": "As per RBI HFC Directions 2025 paragraph 58, no housing finance company shall grant housing loans to individuals up to 30 lakh with LTV ratio exceeding 90 percent.",
+        "context_query": "No housing finance company shall grant housing loans individuals 30 lakh LTV ratio exceeding 90 percent paragraph 58",
+    },
+    {
+        "id": "TC002",
+        "category": "home_loan",
+        "input": "What is the maximum LTV ratio for a home loan of 20 lakhs?",
+        "expected_output": "For home loans up to 30 lakh, the maximum LTV ratio is 90 percent as per RBI guidelines.",
+        "context_query": "LTV ratio housing loan up to 30 lakh 90 percent individual",
+    },
+    {
+        "id": "TC003",
+        "category": "home_loan",
+        "input": "What is the maximum LTV ratio for a home loan of 80 lakhs?",
+        "expected_output": "For home loans above 75 lakh, the maximum LTV ratio is 75 percent as per RBI guidelines.",
+        "context_query": "LTV ratio housing loan above 75 lakh 75 percent individual",
+    },
+    {
+        "id": "TC004",
+        "category": "home_loan",
+        "input": "What is the maximum tenure for a housing loan as per RBI?",
+        "expected_output": "As per RBI guidelines, housing loans may be repayable within a maximum period of 20 years including moratorium or repayment holiday.",
+        "context_query": "maximum repayment period housing loan years moratorium",
+    },
+    {
+        "id": "TC005",
+        "category": "kyc",
+        "input": "Is KYC mandatory for loan applicants as per RBI?",
+        "expected_output": "Yes, KYC is mandatory for all loan applicants as per RBI KYC Master Directions.",
+        "context_query": "KYC mandatory loan applicants identity verification RBI directions",
+    },
+    {
+        "id": "TC006",
+        "category": "msme_loan",
+        "input": "What is the definition of a micro enterprise as per RBI MSME guidelines?",
+        "expected_output": "A micro enterprise is one where investment in plant and machinery does not exceed 1 crore rupees and turnover does not exceed 5 crore rupees.",
+        "context_query": "micro enterprise definition plant machinery investment turnover crore",
+    },
+    {
+        "id": "TC007",
+        "category": "home_loan",
+        "input": "Can a housing finance company grant loans without board approval for margins?",
+        "expected_output": "No. Housing finance companies must obtain board approval before deciding on margins and loan eligibility for housing loans.",
+        "context_query": "board approval housing loan margins eligibility borrowers",
+    },
+]

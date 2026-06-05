@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-06-04T14:39:15.698660",
+  "summary": {
+    "total": 7,
+    "passed": 2,
+    "failed": 1,
+    "pass_rate": 28.6,
+    "avg_faithfulness": 0.114,
+    "avg_answer_relevancy": 0.4,
+    "avg_contextual_recall": 0.257,
+    "overall_score": 0.257
+  },
+  "test_cases": [
+    {
+      "id": "TC001",
+      "question": "What is the maximum LTV ratio for a home loan of 45 lakhs?",
+      "faithfulness": 0.8,
+      "answer_relevancy": 1.0,
+      "contextual_recall": 0.8,
+      "average": 0.8666666666666667,
+      "passed": true,
+      "faith_reason": "The AI answer claims the maximum LTV ratio for a home loan of 45 lakhs is 80%, but the source documents actually state the LTV ratio for loans above 30 lakh and up to 75 lakh is \u2264 75% for loans sanctioned before 01-08-2017 and \u2264 80% for loans sanctioned on or after 01-08-2017.",
+      "relev_reason": "The answer directly addresses the question by stating the maximum LTV ratio for a home loan of 45 lakhs is 80%.",
+      "recall_reason": "The retrieved documents provide information on LTV ratios for different loan amounts and sanction dates, but do not explicitly state the maximum LTV ratio for a 45 lakh loan."
+    },
+    {
+      "id": "TC002",
+      "question": "What is the maximum LTV ratio for a home loan of 20 lakhs?",
+      "faithfulness": 0.0,
+      "answer_relevancy": 1.0,
+      "contextual_recall": 0.0,
+      "average": 0.3333333333333333,
+      "passed": false,
+      "faith_reason": "The AI answer claims the maximum LTV ratio for a housing loan up to 30 lakh is 90%, but this specific information is not found in the provided source documents.",
+      "relev_reason": "The AI answer directly addresses the question by stating the maximum LTV ratio for a home loan of 20 lakhs is 90%.",
+      "recall_reason": "The retrieved documents do not explicitly mention the maximum LTV ratio for home loans up to 30 lakh as per RBI guidelines."
+    },
+    {
+      "id": "TC003",
+      "question": "What is the maximum LTV ratio for a home loan of 80 lakhs?",
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.8,
+      "contextual_recall": 1.0,
+      "average": 0.6,
+      "passed": true,
+      "faith_reason": "The AI answer claims an 80% LTV ratio for a home loan of 80 lakhs, but the source documents do not explicitly mention the LTV ratio for loans between 75 lakh and 80 lakh, and the AI's inference is not supported by the provided text.",
+      "relev_reason": "The answer provides a relevant LTV ratio for the given home loan amount, although it involves some implication and generalization based on the provided evidence.",
+      "recall_reason": "The retrieved documents contain the necessary information to answer the question about the maximum LTV ratio for a home loan of 80 lakhs."
+    }
+  ]
+}

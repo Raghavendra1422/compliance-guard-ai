@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-06-04T11:48:33.818130",
+  "summary": {
+    "total": 7,
+    "passed": 5,
+    "failed": 2,
+    "pass_rate": 71.4,
+    "avg_faithfulness": 0.757,
+    "avg_answer_relevancy": 0.586,
+    "avg_contextual_recall": 0.629,
+    "overall_score": 0.657
+  },
+  "test_cases": [
+    {
+      "id": "TC001",
+      "question": "What is the maximum LTV ratio for a home loan of 45 lakhs?",
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "contextual_recall": 1.0,
+      "average": 1.0,
+      "passed": true,
+      "faith_reason": "All claims in the AI answer are supported by the source documents, specifically Directions 2025, sections 58 and 19.1.",
+      "relev_reason": "The AI answer directly addresses the question by stating the maximum LTV ratio for a home loan of 45 lakhs is 80%.",
+      "recall_reason": "The retrieved documents contain the necessary information to answer the question about the maximum LTV ratio for a home loan of 45 lakhs."
+    },
+    {
+      "id": "TC002",
+      "question": "What is the maximum LTV ratio for a home loan of 20 lakhs?",
+      "faithfulness": 1.0,
+      "answer_relevancy": 1.0,
+      "contextual_recall": 1.0,
+      "average": 1.0,
+      "passed": true,
+      "faith_reason": "The AI answer is faithful to the source documents, which state that the maximum LTV ratio for loans up to \u20b930 lakh is 90%.",
+      "relev_reason": "The AI answer directly addresses the question by stating the maximum LTV ratio for a home loan of 20 lakhs as 90%.",
+      "recall_reason": "The retrieved documents contain the necessary information to answer the question about the maximum LTV ratio for a home loan of 20 lakhs."
+    },
+    {
+      "id": "TC003",
+      "question": "What is the maximum LTV ratio for a home loan of 80 lakhs?",
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.0,
+      "contextual_recall": 1.0,
+      "average": 0.6666666666666666,
+      "passed": true,
+      "faith_reason": "All claims in the AI answer are supported by the source documents, specifically sections 19.1 and 58 of the Directions, 2025.",
+      "relev_reason": "The answer does not directly address the question about the maximum LTV ratio for a home loan of 80 lakhs, instead providing a verdict of compliance and explanation of RBI regulations.",
+      "recall_reason": "The retrieved documents explicitly state that for home loans above 75 lakh, the maximum LTV ratio is 75 percent."
+    },
+    {
+      "id": "TC004",
+      "question": "What is the maximum tenure for a housing loan as per RBI?",
+      "faithfulness": 1.0,
+      "answer_relevancy": 0.8,
+      "contextual_recall": 0.0,
+      "average": 0.6,
+      "passed": true,
+      "faith_reason": "The AI answer is faithful to the source documents, which explicitly state the maximum tenure for a housing loan as 20 years.",
+      "relev_reason": "The AI answer indirectly addresses the question by providing the maximum tenure for a housing loan as per RBI regulations, but it is buried within a larger explanation.",
+      "recall_reason": "The retrieved documents do not contain the specific information about the maximum tenure for a housing loan as per RBI guidelines."
+    },
+    {
+      "id": "TC005",
+      "question": "Is KYC mandatory for loan applicants as per RBI?",
+      "faithfulness": 0.5,
+      "answer_relevancy": 0.8,
+      "contextual_recall": 0.4,
+      "average": 0.5666666666666668,
+      "passed": false,
+      "faith_reason": "The source documents do not explicitly state that KYC is mandatory for loan applicants, although they do emphasize the importance of KYC and the responsibility of the Regulated Entity.",
+      "relev_reason": "The answer directly addresses the question by stating that KYC is mandatory for loan applicants as per RBI regulations, although it could be more concise.",
+      "recall_reason": "The retrieved documents mention KYC norms and regulations, but do not explicitly state that KYC is mandatory for all loan applicants as per RBI."
+    },
+    {
+      "id": "TC006",
+      "question": "What is the definition of a micro enterprise as per RBI MSME guidelines?",
+      "faithfulness": 0.0,
+      "answer_relevancy": 0.0,
+      "contextual_recall": 0.0,
+      "average": 0.0,
+      "passed": false,
+      "faith_reason": "The source documents explicitly provide the definition of a micro enterprise, contradicting the AI's claims.",
+      "relev_reason": "The AI answer does not provide a direct definition of a micro enterprise as per RBI MSME guidelines, instead stating that the definition is not explicitly provided.",
+      "recall_reason": "The retrieved documents do not contain the correct definition of a micro enterprise as per RBI MSME guidelines, which is investment in plant and machinery not exceeding 1 crore rupees and turnover not exceeding 5 crore rupees."
+    },
+    {
+      "id": "TC007",
+      "question": "Can a housing finance company grant loans without board approval for margins?",
+      "faithfulness": 0.8,
+      "answer_relevancy": 0.5,
+      "contextual_recall": 1.0,
+      "average": 0.7666666666666666,
+      "passed": true,
+      "faith_reason": "The source documents explicitly mention that UCBs need the approval of their Board of Directors to decide margins and grant housing loans.",
+      "relev_reason": "The answer does not provide a direct response to the question, instead stating that the provided regulations do not explicitly mention the requirement and recommending further review.",
+      "recall_reason": "The retrieved documents explicitly state that UCBs and housing finance companies must obtain board approval before deciding on margins and loan eligibility criteria for housing loans."
+    }
+  ]
+}

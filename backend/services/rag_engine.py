@@ -2,9 +2,8 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from langchain.schema import Document
 from services.ingestor import search_regulations, vectorstore
-
+from langchain_core.documents import Document
 load_dotenv()
 
 
@@ -22,11 +21,14 @@ def multi_query_retrieve(question: str, n_results: int = 5) -> list:
     """
     Deep RAG: generate 3 different versions of the question,
     retrieve chunks for each, then combine unique results.
-    This finds MORE relevant chunks than a single query.
     """
-    llm = get_llm()
+    llm = ChatGroq(
+        api_key=os.getenv("GROQ_API_KEY"),
+        model_name="llama-3.1-8b-instant",
+        temperature=0.1,
+        max_tokens=200
+    )
 
-    # Ask the LLM to rephrase the question 3 different ways
     rephrase_prompt = ChatPromptTemplate.from_template("""
 You are an RBI compliance expert. Given this compliance question, 
 generate 3 different ways to search for the answer in RBI regulations.
@@ -38,10 +40,9 @@ Original question: {question}
 
     response = llm.invoke(rephrase_prompt.format_messages(question=question))
     queries = [q.strip() for q in response.content.strip().split("\n") if q.strip()]
-    queries = queries[:3]  # max 3
-    queries.append(question)  # always include original
+    queries = queries[:3]
+    queries.append(question)
 
-    # Retrieve chunks for each query, collect unique ones
     seen_ids = set()
     all_chunks = []
 
@@ -53,66 +54,78 @@ Original question: {question}
                 seen_ids.add(chunk_id)
                 all_chunks.append(chunk)
 
-    # Sort by relevance score, return top results
     all_chunks.sort(key=lambda x: x["relevance_score"], reverse=True)
-    return all_chunks[:8]  # return top 8 unique chunks
+
+    print("\n=== TOP RETRIEVED CHUNKS ===")
+
+    for i, chunk in enumerate(all_chunks[:5]):
+        print(f"\nChunk {i+1}")
+        print("Score:", chunk["relevance_score"])
+        print(chunk["content"][:400])
+
+    print("\n===========================\n")
+
+    return all_chunks[:8]
 
 
 def verify_answer(answer: str, chunks: list, question: str) -> dict:
-    """
-    Hallucination Guard: check if the answer is actually
-    supported by the retrieved RBI regulation chunks.
-    Returns confidence score and verification result.
-    """
-    llm = get_llm()
+    """Strict hallucination guard."""
 
-    # Build context from chunks
+    llm = ChatGroq(
+        api_key=os.getenv("GROQ_API_KEY"),
+        model_name="llama-3.1-8b-instant",
+        temperature=0.1,
+        max_tokens=300
+    )
+
     context = "\n\n".join([
         f"[Chunk {i+1}]: {chunk['content']}"
         for i, chunk in enumerate(chunks[:5])
     ])
 
     verify_prompt = ChatPromptTemplate.from_template("""
-You are a strict fact-checker for RBI compliance answers.
+You are a strict RBI compliance auditor.
 
-QUESTION: {question}
+QUESTION:
+{question}
 
-ANSWER GIVEN: {answer}
+ANSWER:
+{answer}
 
-ACTUAL RBI REGULATION CHUNKS:
+RBI REGULATION EVIDENCE:
 {context}
 
-Check if the answer is supported by the regulation chunks above.
-Respond in this exact format:
+Rules:
+1. Every factual claim must appear in the evidence.
+2. If even one important claim is unsupported, mark SUPPORTED as NO.
+3. Never use outside knowledge.
+
+Return EXACTLY:
 SUPPORTED: yes/no
-CONFIDENCE: 0.0 to 1.0
-REASON: one sentence explanation
-CORRECTIONS: any corrections needed, or "none"
+CONFIDENCE: number between 0 and 1
+REASON: short explanation
+CORRECTIONS: corrected answer or "none"
 """)
 
-    response = llm.invoke(verify_prompt.format_messages(
-        question=question,
-        answer=answer,
-        context=context
-    ))
+    response = llm.invoke(
+        verify_prompt.format_messages(
+            question=question,
+            answer=answer,
+            context=context
+        )
+    )
 
-    # Parse the structured response
     lines = response.content.strip().split("\n")
-    result = {
-        "supported": False,
-        "confidence": 0.0,
-        "reason": "",
-        "corrections": "none"
-    }
+    result = {"supported": False, "confidence": 0.0, "reason": "", "corrections": "none"}
 
     for line in lines:
         if line.startswith("SUPPORTED:"):
             result["supported"] = "yes" in line.lower()
         elif line.startswith("CONFIDENCE:"):
             try:
-                result["confidence"] = float(line.split(":")[1].strip())
-            except Exception:
-                result["confidence"] = 0.5
+                result["confidence"] = float(line.split(":", 1)[1].strip())
+            except:
+                result["confidence"] = 0.0
         elif line.startswith("REASON:"):
             result["reason"] = line.split(":", 1)[1].strip()
         elif line.startswith("CORRECTIONS:"):
@@ -122,10 +135,7 @@ CORRECTIONS: any corrections needed, or "none"
 
 
 def check_single_rule(question: str, loan_data: dict) -> dict:
-    """
-    Check ONE compliance rule using the full RAG + verify loop.
-    This is called multiple times by the agent for each rule.
-    """
+    """Check ONE compliance rule using the full RAG + verify loop."""
     llm = get_llm()
 
     # Step 1: Deep retrieve relevant chunks
@@ -136,37 +146,55 @@ def check_single_rule(question: str, loan_data: dict) -> dict:
         return {
             "question": question,
             "verdict": "UNABLE_TO_CHECK",
-            "answer": "No relevant RBI regulations found for this question.",
+            "answer": "No relevant RBI regulations found.",
             "confidence": 0.0,
             "citations": [],
             "verified": False
         }
 
-    # Step 2: Build context from retrieved chunks
     context = "\n\n".join([
         f"[RBI Regulation - Chunk {i+1}]:\n{chunk['content']}"
         for i, chunk in enumerate(chunks[:5])
     ])
 
-    # Step 3: Generate compliance verdict
+    # Step 2: Generate compliance verdict
     compliance_prompt = ChatPromptTemplate.from_template("""
-You are a strict RBI compliance officer checking loan applications.
+You are a senior RBI compliance officer. Answer the compliance question
+using ONLY the RBI regulations provided below.
 
-COMPLIANCE QUESTION: {question}
+QUESTION:
+{question}
 
 LOAN APPLICATION DATA:
 {loan_data}
 
-RELEVANT RBI REGULATIONS:
+RBI REGULATIONS:
 {context}
 
-Based ONLY on the RBI regulations provided above, answer the compliance question.
-Give your response in this exact format:
+STRICT RULES:
+1. Use ONLY the regulations provided above
+2. Never use outside knowledge
+3. For LTV questions: find the correct bracket (up to 30L = 90%, 30-75L = 80%, above 75L = 75%)
+4. Quote the exact regulation text as evidence
+5. If you find the rule, give a direct clear answer with the specific percentage
+6. Only say NEEDS_REVIEW if the regulation truly does not exist in provided text
+7. Do not say "not explicitly stated" if the information IS in the chunks
+
+Return EXACTLY in this format:
 
 VERDICT: COMPLIANT / NON_COMPLIANT / NEEDS_REVIEW
-EXPLANATION: Clear explanation citing specific regulation
-VIOLATED_RULE: The specific rule that is violated (or "none")
-RECOMMENDATION: What action to take
+
+EXPLANATION:
+Clear direct explanation with specific numbers from the regulation.
+
+EVIDENCE:
+Copy the exact text from the regulation that supports your answer.
+
+VIOLATED_RULE:
+Specific rule violated or "none"
+
+RECOMMENDATION:
+What action to take.
 """)
 
     response = llm.invoke(compliance_prompt.format_messages(
@@ -177,40 +205,52 @@ RECOMMENDATION: What action to take
 
     answer = response.content.strip()
 
-    # Step 4: Verify the answer (hallucination check)
+    # Safety Check 1
+    if "EVIDENCE:" not in answer:
+        print("  [Safety] Malformed response, flagging NEEDS_REVIEW")
+        answer = """VERDICT: NEEDS_REVIEW\nEXPLANATION:\nInsufficient regulatory evidence found.\nEVIDENCE:\nnone\nVIOLATED_RULE:\nnone\nRECOMMENDATION:\nManual compliance review required."""
+
+    # Step 3: Verify the answer
     print(f"  [Verify] Checking answer for hallucinations...")
     verification = verify_answer(answer, chunks, question)
 
-    # Step 5: If confidence too low, retry with different query
-    if verification["confidence"] < 0.5:
+    # Step 4: Retry logic with nested Safety Check
+    if verification["confidence"] < 0.75 and "EVIDENCE:\nnone" not in answer:
         print(f"  [Retry] Low confidence ({verification['confidence']}), retrying...")
         chunks = multi_query_retrieve(
-            question + " " + verification["corrections"],
+            question + " " + (verification["corrections"] if verification["corrections"] != "none" else ""),
             n_results=5
         )
         context = "\n\n".join([c['content'] for c in chunks[:5]])
+        
         response = llm.invoke(compliance_prompt.format_messages(
             question=question,
             loan_data=str(loan_data),
             context=context
         ))
         answer = response.content.strip()
+
+        # Safety Check 2 (Inside Retry)
+        if "EVIDENCE:" not in answer:
+            answer = """VERDICT: NEEDS_REVIEW\nEXPLANATION:\nInsufficient regulatory evidence found.\nEVIDENCE:\nnone\nVIOLATED_RULE:\nnone\nRECOMMENDATION:\nManual compliance review required."""
+
         verification = verify_answer(answer, chunks, question)
 
-    # Parse verdict from answer
+    # Step 5: Robust Verdict Parsing
     verdict = "NEEDS_REVIEW"
     for line in answer.split("\n"):
-        if line.startswith("VERDICT:"):
-            v = line.split(":", 1)[1].strip()
-            if "NON_COMPLIANT" in v:
+        if line.strip().startswith("VERDICT:"):
+            v_raw = line.split(":", 1)[1].strip().upper()
+            # Stricter matching to avoid "COMPLIANT" matching inside "NON_COMPLIANT"
+            if v_raw == "NON_COMPLIANT":
                 verdict = "NON_COMPLIANT"
-            elif "COMPLIANT" in v:
+            elif v_raw == "COMPLIANT":
                 verdict = "COMPLIANT"
             else:
                 verdict = "NEEDS_REVIEW"
             break
 
-    # Build citations from chunks
+    # Build citations
     citations = [
         {
             "circular_id": c["metadata"].get("circular_id"),
