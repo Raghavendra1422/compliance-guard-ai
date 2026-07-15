@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { submitCheck, getCheck } from '../api'
+import { useResult } from '../context/ResultContext'
 
 // ── Helper: format number to Indian style ──────────────────────
 const formatIndian = (num) => {
@@ -87,6 +88,7 @@ function SmartInput({ label, value, onChange, step = 1000, min = 0, prefix = '�
 }
 
 export default function CheckCompliance() {
+  const { result: report, setResult: setReport } = useResult()
   const [form, setForm] = useState({
     applicant_name: '', applicant_city: 'Mumbai',
     applicant_income_monthly: 75000, cibil_score: 720,
@@ -96,7 +98,6 @@ export default function CheckCompliance() {
     loan_purpose: 'purchase'
   })
   const [loading, setLoading] = useState(false)
-  const [report, setReport]   = useState(null)
   const [elapsed, setElapsed] = useState(0)
 
   const ltv = form.property_value_inr > 0

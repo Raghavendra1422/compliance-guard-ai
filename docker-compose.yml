@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+    container_name: compliance-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/chroma_db:/app/chroma_db
+      - ./backend/compliance_checks.db:/app/compliance_checks.db
+    restart: unless-stopped
+    networks:
+      - compliance-net
+
+  frontend:
+    build: ./frontend
+    container_name: compliance-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - compliance-net
+
+networks:
+  compliance-net:
+    driver: bridge
